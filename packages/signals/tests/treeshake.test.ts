@@ -106,7 +106,11 @@ describe("pay-for-use tree-shaking (#2883)", () => {
     // merged-away stashes double-applied their records' patches at commit).
     // Core-retained by necessity: transition merging cannot be pay-for-use.
     // Measured at 21,134 post-change.
-    expect(minifiedBytes).toBeLessThan(21_250);
+    // CONSCIOUS BUMP (re-audit 6, 2026-08-28): +~260B — transition-merge
+    // same-channel coalescing (a record emitting in BOTH merged
+    // transactions applies ONCE at commit, next resolved live). Merge
+    // machinery is core-retained by necessity. Measured at 21,393.
+    expect(minifiedBytes).toBeLessThan(21_500);
   });
 
   it("plain stores shed the verdict layer, affects, boundaries, and map", async () => {
