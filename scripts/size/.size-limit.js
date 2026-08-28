@@ -70,7 +70,12 @@ module.exports = [
     // Re-audit-5 hardening ripple (2026-08-27): the mergeTransitionState
     // stash move + stamp retarget and the dispatch snapshot marks are
     // core-retained — a few dozen brotli bytes on every scenario.
-    limit: "7.9 KB",
+    //
+    // Re-audit-6 (2026-08-28): same-channel merge coalescing in
+    // mergeTransitionState (both stashes holding the same record's entry
+    // now collapse to one live-resolving entry). Core-retained; measured
+    // 7.91.
+    limit: "7.95 KB",
     modifyEsbuildConfig
   },
   {
@@ -155,7 +160,12 @@ module.exports = [
     // write-time transition stamp (foldBatches WeakMap + ensurePB stamp), and
     // the drain's defer check — ~40 B measured on the pre-stage-2 base. All
     // load-bearing correctness on paths createStore always retains.
-    limit: "14.45 KB",
+    //
+    // Re-audit-6 (2026-08-28): merge coalescing (core, see the core-floor
+    // note) plus the prod-sound getter-demotion seams — accessed-key union
+    // on the channel (pc.ak) and the targetKeysPlain bounded probe at both
+    // adoption emission sites, replacing the dev-only check. Measured 14.46.
+    limit: "14.55 KB",
     modifyEsbuildConfig
   },
   {
@@ -182,7 +192,10 @@ module.exports = [
     // 9.67 — the core-floor batch (see that note) plus the #3042 latest()
     // companion mid-transition backfill, which lives in the optimistic
     // module this scenario retains via latest().
-    limit: "9.85 KB",
+    //
+    // Re-audit-6 (2026-08-28): merge coalescing (core) — this scenario had
+    // ~no headroom left after the audit-5 ripple. Measured 9.93.
+    limit: "10 KB",
     modifyEsbuildConfig
   },
   {
@@ -208,8 +221,10 @@ module.exports = [
     // next merge (2026-08-28): 10.6 -> 10.65 KB, measured at 10.61 — the
     // branch's insert seam plus next's post-cap drift summing in the same
     // floor.
+    //
+    // Re-audit-6 (2026-08-28): merge coalescing (core). Measured 10.70.
     path: "minimal-app.js",
-    limit: "10.65 KB",
+    limit: "10.75 KB",
     modifyEsbuildConfig
   },
   {
@@ -252,7 +267,9 @@ module.exports = [
     // next merge (2026-08-28): 17.45 -> 17.55 KB, measured at 17.48 — the
     // useHead prelude relocation (#3081, ~120 B in hydrate(), see its note)
     // arriving from next on top of the drift-ratcheted floor.
-    limit: "17.55 KB",
+    //
+    // Re-audit-6 (2026-08-28): merge coalescing (core). Measured 17.56.
+    limit: "17.65 KB",
     modifyEsbuildConfig
   },
   {
@@ -297,8 +314,12 @@ module.exports = [
     //
     // Fold scheduling (#3089, merged from next): 25.9 -> 26 KB — the same
     // bytes as the createStore note (this scenario retains all of it).
+    //
+    // Re-audit-6 (2026-08-28): merge coalescing (core) + the getter-
+    // demotion recording/probe seams (see the createStore note; this
+    // scenario retains the store engine). Measured 26.13.
     path: "hydrating-store-app.js",
-    limit: "26 KB",
+    limit: "26.25 KB",
     modifyEsbuildConfig
   },
   {
@@ -321,7 +342,11 @@ module.exports = [
     modifyEsbuildConfig
   },
   {
-    name: "app: CSR flip preview — + patchDriver (non-list patch templates)",
+    name: "app: CSR default-on — + patchDriver (non-list patch templates)",
+    // FLIP LANDED (2026-08-28): patch mode is the compiler default in both
+    // Babel and Oxc; this is no longer a preview, it's what ~every app
+    // ships. Opt out: patchDriver: false.
+    //
     // What patch-mode DEFAULT-ON adds to ~every app: nearly any real
     // template has one eligible pure member-read binding, so the compiler
     // emits at least one patchDriver call — retaining the dual driver and
@@ -330,12 +355,19 @@ module.exports = [
     // over the classic app). NOT here: the list driver (only rowProof arms
     // the insert seam) and the row-ops emitters + reconcile diff builders
     // (row hooks arm only from list registrations).
+    //
+    // Re-audit-6 (2026-08-28): the value-tier share of the hardening —
+    // key recording at registration (the recording proxy in patchDriver's
+    // initial apply + first-drain recording), applyStructural's live-list
+    // dispatch, and the merge coalescing core bytes. Measured 14.91.
     path: "csr-app-patch.js",
-    limit: "14.6 KB",
+    limit: "15 KB",
     modifyEsbuildConfig
   },
   {
-    name: "app: CSR flip preview — + rowProof (patch-mode list driver)",
+    name: "app: CSR default-on — + rowProof (patch-mode list driver)",
+    // FLIP LANDED (2026-08-28) — see the patchDriver scenario note.
+    //
     // The full flip cost: a compiled patch-mode list row (rowProof) arms
     // the insert seam and retains the list driver plus the row-hooks tier
     // (row-ops/slot emitters + reconcile's keyed/identity diff builders) —
@@ -346,8 +378,14 @@ module.exports = [
     // Re-audit-3 hardening: 16.65 -> 16.75 KB (measured 16.69) — the
     // driver's failed-apply resync flag + partial-registration severing and
     // the coalescing entry updates ride this tier.
+    //
+    // Re-audit-6 (2026-08-28): the list-tier share of the hardening —
+    // initial-construction sever-on-throw (client + hydration), ACTIVE
+    // failed-apply resync on slot ticks, structural queue u-mark dispatch,
+    // occurrence-aware identityOps — plus the value-tier bytes above.
+    // Measured 17.20.
     path: "csr-app-patch-lists.js",
-    limit: "16.9 KB",
+    limit: "17.35 KB",
     modifyEsbuildConfig
   },
   {
