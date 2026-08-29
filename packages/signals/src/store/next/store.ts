@@ -98,7 +98,7 @@ import {
 // channel tree-shakes out of apps that never register a patch consumer.
 // Every call is `t.pc`-guarded — a target only acquires `pc` through
 // patch.js registration, which installs the hooks first.
-import { patchHooks, rowHooks } from "./patch-hooks.js";
+import { patchHooks, rowHooks, installWrapRecordHook, wrapRecordHook } from "./patch-hooks.js";
 
 // ---------------------------------------------------------------------------
 // wrap / dedupe
@@ -157,6 +157,8 @@ export function pcOf(t: StoreNextTarget): PatchChannel {
       qe: null,
       qo: null,
       qeo: null,
+      qf: null,
+      qfo: null,
       ak: null,
       dp: null,
       ks: false,
@@ -201,6 +203,7 @@ function createTarget(
   t.del = null;
   t.hv = null;
   t.ht = null;
+  if (wrapRecordHook === null) installWrapRecordHook(wrapNext);
   t.px = new Proxy(t, traps);
   // Legacy interop: shared machinery (affects walks, wrap dedupe) reads the
   // proxy off looked-up targets as a field.
