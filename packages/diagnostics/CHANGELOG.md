@@ -1,5 +1,12 @@
 # @solidjs/diagnostics
 
+## 2.0.0-rc.5
+
+### Patch Changes
+
+- Updated dependencies [0c02d42]
+  - @solidjs/signals@2.0.0-rc.5
+
 ## 2.0.0-rc.4
 
 ### Patch Changes

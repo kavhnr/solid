@@ -1,5 +1,53 @@
 # @solidjs/web
 
+## 2.0.0-rc.5
+
+### Minor Changes
+
+- 9522945: Scripted server-function calls now go to their own data address, `<endpoint>/data/<id>`, leaving the bare `<endpoint>/<id>` address to plain HTTP (#3094). The two caller kinds get differently shaped answers — codec encodings for the client transport, verbatim responses / form-convention handling for everyone else — and shared caches key on the URL, so a header-driven shape meant one caller kind's cached answer could be replayed to the other (a `GET`-declared function returning a raw `Response` with a public cache policy could serve its codec encoding to a browser navigation, or its raw body to the app's own transport). The answer's shape is now a function of the URL alone. A reference's `.url` and rendered action urls stay on the bare address; reconstructed callables splice the `data` segment in ahead of the id for their own calls. Transitional: the instance header still summons the scripted shape at the bare address so already-loaded tabs survive a server deploy, with those answers forced `no-store`.
+
+### Patch Changes
+
+- ec52360: Contain flight-data collector errors per source: a throwing collector no longer fails the mutation response (the client received an error for a mutation that succeeded) or drop the other sources' slices — the failing source is simply omitted and logged.
+- 19fa8b0: Fix two server-function transport encoding issues:
+  - Bound the error response header value (#3093). The header is a classification label — the structured error travels in the body — so long thrown messages (nine-fold inflated by percent-encoding for non-latin1 text) no longer blow past receiver header limits and turn the application error into an unreadable response.
+  - Support null-body statuses (204, 205, 304) (#3095). `respond(undefined, { status: 204 })` and raw null-body `Response`s now answer with a real bodiless response at the declared status instead of a `TypeError` from the `Response` constructor that dispatch sanitized into a phantom generic error at 200. A value-carrying result on a null-body status is reported as a legible authoring error naming the status, in every build.
+
+- 1a95943: Server-function failure is now signaled by the protocol's error tag alone, and thrown errors answer a real 500 (#3097). The client no longer treats `status >= 500` as failure on responses the runtime encoded — `respond(value, { status: 500 })` resolves with its value like any other returned value, and only a thrown outcome rejects. A peer's own 5xx (proxy, load balancer) carries no body-format header and is still refused before decoding. On the server, a plain thrown error now answers 500 instead of 200-with-tag, so intermediaries — CDN metrics, load-balancer health, log alerts — see what the tag tells the client; thrown envelopes keep the author's status as before.
+- 5be07a8: Forward an author's 3xx status consistently (#3096). The scripted redirect mask now covers exactly the statuses fetch follows (301, 302, 303, 307, 308) — a 304, the natural answer for a conditional read, forwards untouched for every caller. Returned envelopes keep their status for unscripted callers (the returned path used to hardcode 200 where the thrown path forwarded it), and the no-JS form convention honors a returned redirect envelope's Location the way it already honored a thrown one.
+- 02f87fe: live() reconnects through the 4xx statuses that say "retry" and honors Retry-After (#3100). The reconnect loop treated the whole 4xx band as a definite rejection, so a rate limiter's 429 — or a gateway's 408 — permanently closed a healthy stream. 408 (RFC 9110 §15.5.9), 425 (RFC 8470) and 429 (RFC 6585 §4) now reconnect like a 5xx, as does any failure whose response carries Retry-After — the peer inviting the retry in as many words. A named Retry-After wait (seconds or HTTP-date, stamped on the error as `retryAfter` in seconds for policy layers) replaces the exponential backoff guess for that attempt, capped at 60s so a misconfigured header cannot end the stream in all but name.
+- 653dd41: Multi-source single-flight: named flight-data sources alongside the unnamed hook
+
+  The single-flight channel assumed exactly one data-owning integration — one
+  `collectFlightData` hook on the server, one `subscribeFlightData` consumer on
+  the client, later registrations displacing earlier ones. An app running two
+  caches (a router's route data and a query library's client) had no way to
+  refresh both from one mutation response: whichever library registered last
+  silently won.
+
+  The channel now multiplexes named sources over the same round trip:
+  - `registerFlightDataSource(id, hook)` (server) registers a collector
+    additively next to the unnamed `collectFlightData` slot, which remains the
+    data-owning integration's (a router's).
+  - `subscribeFlightData(id, consumer)` (client) subscribes a consumer to its
+    source's slice; the bare legacy signature keeps meaning the unnamed source.
+  - The request-leg `X-Single-Flight` header now carries the subscribed source
+    ids, so the server only runs collectors the client can consume; the
+    response leg echoes the ids actually folded, making the payload shape
+    self-describing. With named sources in play, `data` is the keyed envelope
+    `{ [source]: slice, ... }` and each slice is delivered to its consumer,
+    awaited, before the mutation's promise resolves.
+
+  Fully wire-compatible in every cross-version pairing: a lone unnamed
+  registration still sends and echoes the literal `true` with the raw payload
+  shape, byte-identical to the previous protocol, and unrecognized opt-in
+  values from hand-tagged requests still reach the unnamed hook. Existing
+  integrations (Solid Router, TanStack Solid Start) keep working unchanged; the
+  keyed envelope only materializes when a named source registers on both ends.
+
+- Updated dependencies [0c02d42]
+  - solid-js@2.0.0-rc.5
+
 ## 2.0.0-rc.4
 
 ### Minor Changes

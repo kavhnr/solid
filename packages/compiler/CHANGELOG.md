@@ -1,5 +1,7 @@
 # @solidjs/compiler
 
+## 2.0.0-rc.5
+
 ## 2.0.0-rc.4
 
 ### Minor Changes
